@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ai-employee-email": {
+      "command": "uv",
+      "args": ["run", "python", "mcp_servers/email_server.py"],
+      "env": {}
+    }
+  }
+}

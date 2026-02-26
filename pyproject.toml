@@ -1,0 +1,14 @@
+[project]
+name = "ai-employee"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "watchdog>=6.0.0",
+    "google-auth-oauthlib>=1.2.0",
+    "google-api-python-client>=2.130.0",
+    "playwright>=1.45.0",
+    "mcp>=1.0.0",
+    "schedule>=1.2.0",
+]

@@ -1,0 +1,42 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment & secrets
+.env
+credentials.json
+client_secret_*.json
+token.json
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs (keep structure, not content)
+AI_Employee_Vault/Logs/*.md
+!AI_Employee_Vault/Logs/.gitkeep
+
+# WhatsApp session data
+whatsapp_session/
+
+# LinkedIn session data
+linkedin_session/
+
+# Gmail processed tracker
+processed_emails.json
+
+# Scheduler bat file
+run_scheduler.bat

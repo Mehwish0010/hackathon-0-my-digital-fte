@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "playwright-browser": {
+      "source": "funnelenvy/agents_webinar_demos",
+      "sourceType": "github",
+      "computedHash": "dc179f1ab89f125aaabab3de2ca43f4d63f4ab71b4ff3769ae0455cebea840e9"
+    }
+  }
+}

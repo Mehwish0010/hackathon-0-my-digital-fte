@@ -1,0 +1,202 @@
+{
+  "main": {
+    "id": "0813fb42bed9f295",
+    "type": "split",
+    "children": [
+      {
+        "id": "66b5df1610f9fc2f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "67a4fbc1f6faf90c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Logs/2026-02-25.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026-02-25"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "296de75b56e9aecd",
+    "type": "split",
+    "children": [
+      {
+        "id": "fe02eaac2913e78e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "fe5fe916dd9c4ca5",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "b914d328dfb00cc9",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "83f69b5ad0cb5f83",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "ae392e521c41438c",
+    "type": "split",
+    "children": [
+      {
+        "id": "25f705c2c5c3234e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f1b85bf99fec9ffb",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Logs/2026-02-25.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for 2026-02-25"
+            }
+          },
+          {
+            "id": "0bcb35a2b3d2dc9c",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Logs/2026-02-25.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from 2026-02-25"
+            }
+          },
+          {
+            "id": "e629c294c8d5f4a4",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "da358b980203c734",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "e6467a84c7797a36",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Logs/2026-02-25.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of 2026-02-25"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "67a4fbc1f6faf90c",
+  "lastOpenFiles": [
+    "Done/FILE_2026-02-25_09-35-33_urgent_invoice_request.md",
+    "Done/urgent_invoice_request.txt",
+    "Done/EMAIL_2026-02-25_23-28-14_Intel_is_hiring_-_Your_profile_is_a_top_match.md",
+    "Done/EMAIL_2026-02-25_23-28-14_MERN_Stack_Developer_at_Quality_Vertex_Integrated.md",
+    "Done/EMAIL_2026-02-25_23-28-13_IT_Administrator_at_Mokha_Trading_Company_in_Karac.md",
+    "Done/EMAIL_2026-02-25_23-28-13_Cog-RAG_Giving_RAG_a_Brain_That_Thinks_Before_It_R.md",
+    "Done/EMAIL_2026-02-25_23-28-12_Software_Engineering_-_Automations_Developer_at_Da.md",
+    "Done/EMAIL_2026-02-25_23-28-11_eBay_is_hiring_-_Your_profile_is_a_top_match.md",
+    "Done/EMAIL_2026-02-25_23-28-13_Wordpress_Custom_Developer_at_Digitaurus_Tech_and.md",
+    "Done/EMAIL_2026-02-25_23-28-12_Software_Developer_at_Marie_Stopes_Society_Pakista.md",
+    "Done/EMAIL_2026-02-25_23-28-15_Tariff_Market_Whiplash.md",
+    "Done/EMAIL_2026-02-25_23-28-11_AMD_Takes_On_The_Leader.md",
+    "Pending_Approval/PAYMENT_urgent_invoice_Client_A_2026-02-25.md"
+  ]
+}
