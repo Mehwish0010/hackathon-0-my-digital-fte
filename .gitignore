@@ -27,6 +27,7 @@ Thumbs.db
 
 # Logs (keep structure, not content)
 AI_Employee_Vault/Logs/*.md
+AI_Employee_Vault/Logs/*.json
 !AI_Employee_Vault/Logs/.gitkeep
 
 # WhatsApp session data
@@ -35,8 +36,18 @@ whatsapp_session/
 # LinkedIn session data
 linkedin_session/
 
+# Facebook/Instagram session data
+facebook_session/
+
+# Twitter/X session data
+twitter_session/
+
 # Gmail processed tracker
 processed_emails.json
+
+# Service health (runtime state)
+AI_Employee_Vault/service_health.json
+AI_Employee_Vault/process_health.json
 
 # Scheduler bat file
 run_scheduler.bat

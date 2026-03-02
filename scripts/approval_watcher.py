@@ -36,6 +36,10 @@ ACTION_PREFIXES = {
     "PAYMENT_": "payment",
     "COMM_": "external_comm",
     "ACTION_": "general_action",
+    "ACCOUNTING_": "accounting",
+    "FACEBOOK_": "facebook_post",
+    "INSTAGRAM_": "instagram_post",
+    "TWITTER_": "twitter_post",
 }
 
 
@@ -111,6 +115,37 @@ def execute_action(file_path: Path, vault_path: Path, dry_run: bool = False) -> 
         done_path = done_dir / file_path.name
         done_path.write_text(content, encoding="utf-8")
         file_path.unlink()
+        return True
+
+    elif action_type == "accounting":
+        # Accounting actions — log approval, require Odoo execution
+        logger.info(f"Accounting action approved: {file_path.name}")
+        logger.info("Odoo operation will be executed if Odoo is available.")
+        log_action(logs_dir, "approval_granted", f"{file_path.name} (accounting — ready for Odoo)")
+
+        content = file_path.read_text(encoding="utf-8")
+        content = content.replace("status: pending_approval", "status: approved")
+        content += f"\n\n---\n_Approved at {datetime.now().isoformat()} — Odoo execution pending_\n"
+        done_path = done_dir / file_path.name
+        done_path.write_text(content, encoding="utf-8")
+        file_path.unlink()
+        return True
+
+    elif action_type in ("facebook_post", "instagram_post"):
+        # Social media posts — handled by facebook_poster.py
+        platform = "Facebook" if action_type == "facebook_post" else "Instagram"
+        logger.info(f"{platform} post approved: {file_path.name}")
+        logger.info(f"Run 'uv run python scripts/facebook_poster.py' to post.")
+        log_action(logs_dir, "approval_granted", f"{file_path.name} ({action_type} — ready to post)")
+        # Don't move — let facebook_poster.py handle it
+        return True
+
+    elif action_type == "twitter_post":
+        # Twitter posts — handled by twitter_poster.py
+        logger.info(f"Twitter post approved: {file_path.name}")
+        logger.info("Run 'uv run python scripts/twitter_poster.py' to post.")
+        log_action(logs_dir, "approval_granted", f"{file_path.name} (twitter_post — ready to post)")
+        # Don't move — let twitter_poster.py handle it
         return True
 
     else:

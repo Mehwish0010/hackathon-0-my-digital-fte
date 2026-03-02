@@ -4,6 +4,16 @@
       "command": "uv",
       "args": ["run", "python", "mcp_servers/email_server.py"],
       "env": {}
+    },
+    "ai-employee-odoo": {
+      "command": "uv",
+      "args": ["run", "python", "mcp_servers/odoo_server.py"],
+      "env": {}
+    },
+    "ai-employee-social": {
+      "command": "uv",
+      "args": ["run", "python", "mcp_servers/social_media_server.py"],
+      "env": {}
     }
   }
 }
