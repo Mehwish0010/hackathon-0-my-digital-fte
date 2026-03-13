@@ -1,0 +1,22 @@
+# Caddy reverse proxy for AI Employee cloud services
+# Replace yourdomain.com with your actual domain
+
+odoo.yourdomain.com {
+    reverse_proxy odoo:8069
+
+    # Rate limiting
+    rate_limit {
+        zone dynamic {
+            key {remote_host}
+            events 100
+            window 1m
+        }
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}

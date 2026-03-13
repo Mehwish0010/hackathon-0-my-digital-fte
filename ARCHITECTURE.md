@@ -20,9 +20,10 @@ OBSIDIAN VAULT (Local Markdown — the message bus)
   Dashboard.md | Company_Handbook.md | Business_Goals.md
         |
         v
-REASONING LAYER (Claude Code + 16 Agent Skills)
+REASONING LAYER (Claude Code + 20 Agent Skills)
   reasoning-loop | vault-triage | inbox-processor | ceo-briefing
-  business-audit | ralph-wiggum-loop | social-media-manager | ...
+  business-audit | ralph-wiggum-loop | social-media-manager
+  cloud-deployment | vault-sync | work-zone-manager | platinum-demo
         |
         v
 ACTION LAYER (MCP Servers + Playwright Automation)
@@ -36,6 +37,8 @@ HUMAN-IN-THE-LOOP (HITL Approval Workflow)
         v
 INFRASTRUCTURE (Cross-cutting concerns)
   audit_logger.py | error_recovery.py | watchdog_monitor.py | scheduler.py
+  vault_sync.py | claim_manager.py | security_check.py | deploy_config.py
+  cloud_agent.py | local_agent.py | odoo_backup.py
 ```
 
 ## Data Flow
@@ -95,6 +98,57 @@ INFRASTRUCTURE (Cross-cutting concerns)
 | Bronze (4) | `vault-triage`, `dashboard-updater`, `inbox-processor`, `playwright-browser` |
 | Silver (4) | `gmail-watcher`, `linkedin-poster`, `hitl-approval`, `reasoning-loop` |
 | Gold (8) | `odoo-accounting`, `facebook-poster`, `instagram-poster`, `twitter-poster`, `social-media-manager`, `ceo-briefing`, `business-audit`, `ralph-wiggum-loop` |
+| Platinum (4) | `cloud-deployment`, `vault-sync`, `work-zone-manager`, `platinum-demo` |
+
+## Cloud/Local Topology (Platinum)
+
+```
+CLOUD VM (24/7 — Oracle Cloud / Docker)           LOCAL MACHINE (on-demand)
+┌─────────────────────────────────────┐    ┌─────────────────────────────────────┐
+│  scheduler.py --mode cloud          │    │  scheduler.py --mode local          │
+│                                     │    │                                     │
+│  gmail_watcher.py (poll Gmail)      │    │  approval_watcher.py                │
+│  cloud_agent.py (triage + draft)    │    │  local_agent.py (execute actions)   │
+│  ceo_briefing.py                    │    │  linkedin_poster.py                 │
+│  social_media_summarizer.py         │    │  facebook_poster.py                 │
+│  vault_sync.py (push/pull)          │    │  twitter_poster.py                  │
+│                                     │    │  odoo_server.py (MCP)               │
+│  NEVER sends/posts/pays             │    │  email_server.py (MCP)              │
+│  Only creates drafts + approvals    │    │  vault_sync.py (push/pull)          │
+│                                     │    │                                     │
+│  /Pending_Approval/ ← writes here   │    │  /Approved/ → executes from here    │
+│  /Updates/ ← dashboard signals      │    │  Dashboard.md ← single writer       │
+└──────────────┬──────────────────────┘    └──────────────┬──────────────────────┘
+               │                                          │
+               └────────── Git Vault Sync ────────────────┘
+                    (every 60s, separate repo)
+                    security_check.py pre-push
+                    claim_manager.py prevents double-work
+```
+
+### Data Flow: Email → Cloud Triage → Vault Sync → Local Approval → Action
+
+```
+1. Gmail → gmail_watcher.py → EMAIL_*.md in /Needs_Action/
+2. cloud_agent.py claims → /In_Progress/cloud/ → triages
+3. Draft reply → /Pending_Approval/email/ → original → /Done/
+4. vault_sync.py pushes (cloud) → pulls (local)
+5. Human reviews in Obsidian → moves to /Approved/
+6. local_agent.py claims → /In_Progress/local/ → executes
+7. Email sent via MCP → file → /Done/ → audit logged
+8. vault_sync.py pushes (local) → pulls (cloud)
+```
+
+### Security Boundaries
+
+| Boundary | Enforcement |
+|----------|-------------|
+| Cloud never sends | cloud_agent.py only writes drafts to /Pending_Approval/ |
+| Secrets never synced | AI_Employee_Vault/.gitignore + security_check.py pre-push |
+| No double-work | claim_manager.py with /In_Progress/<agent_id>/ |
+| Dashboard single-writer | Only local writes Dashboard.md; cloud writes to /Updates/ |
+| HTTPS for cloud Odoo | Caddy reverse proxy with auto-TLS |
+| Credentials isolated | deploy/*.env excluded from Git, /etc/ai-employee/.env on server |
 
 ## Key Design Decisions
 

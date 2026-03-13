@@ -1,0 +1,17 @@
+[Unit]
+Description=AI Employee Local Agent
+After=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/ai-employee
+ExecStart=%h/ai-employee/.venv/bin/python scripts/scheduler.py --mode local --vault %h/ai-employee/AI_Employee_Vault
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+EnvironmentFile=%h/ai-employee/.env
+
+[Install]
+WantedBy=default.target

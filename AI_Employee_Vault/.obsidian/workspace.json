@@ -13,12 +13,24 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Logs/2026-02-25.md",
+                "file": "Dashboard.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026-02-25"
+              "title": "Dashboard"
+            }
+          },
+          {
+            "id": "073fb0e7f2caffa6",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.12.4"
+              },
+              "icon": "lucide-book-up",
+              "title": "Release Notes 1.12.4"
             }
           }
         ]
@@ -183,20 +195,44 @@
       "bases:Create new base": false
     }
   },
-  "active": "67a4fbc1f6faf90c",
+  "active": "fe5fe916dd9c4ca5",
   "lastOpenFiles": [
-    "Done/FILE_2026-02-25_09-35-33_urgent_invoice_request.md",
-    "Done/urgent_invoice_request.txt",
-    "Done/EMAIL_2026-02-25_23-28-14_Intel_is_hiring_-_Your_profile_is_a_top_match.md",
-    "Done/EMAIL_2026-02-25_23-28-14_MERN_Stack_Developer_at_Quality_Vertex_Integrated.md",
-    "Done/EMAIL_2026-02-25_23-28-13_IT_Administrator_at_Mokha_Trading_Company_in_Karac.md",
-    "Done/EMAIL_2026-02-25_23-28-13_Cog-RAG_Giving_RAG_a_Brain_That_Thinks_Before_It_R.md",
-    "Done/EMAIL_2026-02-25_23-28-12_Software_Engineering_-_Automations_Developer_at_Da.md",
-    "Done/EMAIL_2026-02-25_23-28-11_eBay_is_hiring_-_Your_profile_is_a_top_match.md",
-    "Done/EMAIL_2026-02-25_23-28-13_Wordpress_Custom_Developer_at_Digitaurus_Tech_and.md",
-    "Done/EMAIL_2026-02-25_23-28-12_Software_Developer_at_Marie_Stopes_Society_Pakista.md",
-    "Done/EMAIL_2026-02-25_23-28-15_Tariff_Market_Whiplash.md",
-    "Done/EMAIL_2026-02-25_23-28-11_AMD_Takes_On_The_Leader.md",
-    "Pending_Approval/PAYMENT_urgent_invoice_Client_A_2026-02-25.md"
+    "Done/EMAIL_2026-03-14_00-31-00_710295_is_your_Instagram_code.md",
+    "Plans/accounting",
+    "Plans/social",
+    "Plans/email",
+    "Pending_Approval/accounting",
+    "Pending_Approval/social",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013635_EMAIL_2026-03-14_01-36-34_Platinum_Demo_.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013635_EMAIL_2026-03-14_00-31-03_Monthly_e-Stat.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013635_EMAIL_2026-03-14_00-31-03_Action_require.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013635_EMAIL_2026-03-14_00-31-02_Action_require.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013634_EMAIL_2026-03-14_00-31-01_86723_is_your_.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013634_EMAIL_2026-03-14_00-31-00_710295_is_your.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013634_EMAIL_2026-03-14_00-30-59_New_login_to_X.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013634_EMAIL_2026-03-14_00-30-59_Junior_Devs_Us.md",
+    "Pending_Approval/email/EMAIL_REPLY_20260314_013634_EMAIL_2026-03-14_00-30-58_Action_Require.md",
+    "Pending_Approval/email",
+    "Needs_Action/accounting",
+    "Needs_Action/social",
+    "Needs_Action/email",
+    "In_Progress/local",
+    "Needs_Action/EMAIL_2026-03-14_01-33-59_Platinum_Demo_Test_Email.md",
+    "Briefings/social_summary_2026-03-14.md",
+    "Pending_Approval/ACCOUNTING_record_payment_20260314_005543.md",
+    "Pending_Approval/ACCOUNTING_create_invoice_20260314_005521.md",
+    "Done/EMAIL_2026-03-14_render_payment_action_required.md",
+    "Done/EMAIL_REPLY_2026-03-14_render_payment.md",
+    "Approved/EMAIL_REPLY_2026-03-14_render_payment.md",
+    "Pending_Approval/EMAIL_REPLY_2026-03-14_render_payment.md",
+    "Needs_Action/EMAIL_2026-03-14_render_payment_action_required.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-03_Action_required_Your_project_Appwrite_project_01_h.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-03_Monthly_e-Statement_of_your_deposit_relationship.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-02_Action_required_Your_project_Appwrite_project_01_i.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-01_86723_is_your_confirmation_code.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-01_Did_you_just_log_in_near_Karachi_on_a_new_device.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-00_710295_is_your_Instagram_code.md",
+    "Needs_Action/EMAIL_2026-03-14_00-31-00_New_login_to_Instagram_from_Chrome_on_Windows.md",
+    "Done/LINKEDIN_post_20260303_183307_proof.png"
   ]
 }

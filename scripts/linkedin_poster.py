@@ -98,7 +98,22 @@ def login_to_linkedin(session_dir: str):
     logger.info(f"LinkedIn session saved to {session_dir}/")
 
 
-def post_to_linkedin(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False) -> bool:
+def _wait_for_login(page, timeout=120):
+    """Wait until user is logged in by checking for feed elements."""
+    logger.info("Waiting for you to log in... (checking for feed page)")
+    start = time.time()
+    while time.time() - start < timeout:
+        url = page.url
+        if "/feed" in url or "/mynetwork" in url or "/messaging" in url:
+            logger.info("Login detected! Proceeding...")
+            time.sleep(2)
+            return True
+        time.sleep(2)
+    logger.error("Login timeout — did not detect logged-in state.")
+    return False
+
+
+def post_to_linkedin(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False, interactive_login: bool = False) -> bool:
     """Post content to LinkedIn using Playwright."""
     if dry_run:
         logger.info(f"[DRY RUN] Would post: {post_content[:100]}...")
@@ -124,10 +139,28 @@ def post_to_linkedin(post_content: str, session_dir: str, proof_path: str, dry_r
             start_post_btn = page.locator("button.share-box-feed-entry__trigger, button[class*='artdeco-button--muted']")
 
             if start_post_btn.count() == 0:
-                logger.error("Not logged in or LinkedIn UI changed. Run with --login first.")
-                page.screenshot(path=proof_path)
-                browser.close()
-                return False
+                if interactive_login:
+                    # Redirect to login page and wait for user
+                    page.goto("https://www.linkedin.com/login", wait_until="networkidle", timeout=15000)
+                    logger.info("Please log in to LinkedIn in the browser window.")
+                    if not _wait_for_login(page, timeout=300):
+                        page.screenshot(path=proof_path)
+                        browser.close()
+                        return False
+                    # After login, navigate to feed
+                    page.goto("https://www.linkedin.com/feed/", wait_until="networkidle", timeout=30000)
+                    time.sleep(2)
+                    start_post_btn = page.locator("button.share-box-feed-entry__trigger, button[class*='artdeco-button--muted']")
+                    if start_post_btn.count() == 0:
+                        logger.error("Still can't find post button after login.")
+                        page.screenshot(path=proof_path)
+                        browser.close()
+                        return False
+                else:
+                    logger.error("Not logged in or LinkedIn UI changed. Run with --login-and-post first.")
+                    page.screenshot(path=proof_path)
+                    browser.close()
+                    return False
 
             # Click "Start a post"
             start_post_btn.first.click()
@@ -177,7 +210,7 @@ def post_to_linkedin(post_content: str, session_dir: str, proof_path: str, dry_r
             return False
 
 
-def process_approved_posts(vault_path: Path, session_dir: str, dry_run: bool = False):
+def process_approved_posts(vault_path: Path, session_dir: str, dry_run: bool = False, interactive_login: bool = False):
     """Find and post all approved LinkedIn drafts."""
     approved_dir = vault_path / "Approved"
     done_dir = vault_path / "Done"
@@ -212,7 +245,7 @@ def process_approved_posts(vault_path: Path, session_dir: str, dry_run: bool = F
         proof_path = str(done_dir / proof_name)
 
         # Post it
-        success = post_to_linkedin(post_data["content"], session_dir, proof_path, dry_run=dry_run)
+        success = post_to_linkedin(post_data["content"], session_dir, proof_path, dry_run=dry_run, interactive_login=interactive_login)
 
         if success:
             # Update file status and move to Done
@@ -272,6 +305,11 @@ def main():
         action="store_true",
         help="Log actions without posting",
     )
+    parser.add_argument(
+        "--login-and-post",
+        action="store_true",
+        help="Login interactively then post in one session (use when session expired)",
+    )
     args = parser.parse_args()
 
     if args.login:
@@ -286,7 +324,7 @@ def main():
     if args.dry_run:
         logger.info("[DRY RUN MODE] No posts will be made.")
 
-    process_approved_posts(vault_path, args.session_dir, dry_run=args.dry_run)
+    process_approved_posts(vault_path, args.session_dir, dry_run=args.dry_run, interactive_login=args.login_and_post)
 
 
 if __name__ == "__main__":

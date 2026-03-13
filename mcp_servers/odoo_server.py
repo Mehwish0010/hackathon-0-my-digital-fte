@@ -55,10 +55,24 @@ def _get_odoo_config() -> dict:
     }
 
 
-def _get_odoo_connection() -> tuple:
+def _get_ssl_context():
+    """Get SSL context for HTTPS connections."""
+    import ssl
+    verify_ssl = os.environ.get("ODOO_VERIFY_SSL", "true").lower() != "false"
+    if verify_ssl:
+        return None  # Use default SSL verification
+    else:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+
+
+def _get_odoo_connection(max_retries: int = 3) -> tuple:
     """
     Authenticate with Odoo and return (models_proxy, uid, password, db).
 
+    Supports HTTPS and connection retry with exponential backoff.
     Raises ConnectionError if Odoo is not available.
     """
     config = _get_odoo_config()
@@ -69,26 +83,73 @@ def _get_odoo_connection() -> tuple:
         )
 
     url = config["url"]
+    ssl_context = _get_ssl_context()
+    import time
 
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            # Build transport with optional SSL context
+            if ssl_context and url.startswith("https"):
+                import ssl as _ssl
+                transport = xmlrpc.client.SafeTransport(context=ssl_context)
+                common = xmlrpc.client.ServerProxy(
+                    f"{url}/xmlrpc/2/common", transport=transport, allow_none=True
+                )
+            else:
+                common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", allow_none=True)
+
+            uid = common.authenticate(
+                config["db"], config["username"], config["password"], {}
+            )
+
+            if not uid:
+                raise ConnectionError("Odoo authentication failed — check credentials.")
+
+            if ssl_context and url.startswith("https"):
+                transport = xmlrpc.client.SafeTransport(context=ssl_context)
+                models = xmlrpc.client.ServerProxy(
+                    f"{url}/xmlrpc/2/object", transport=transport, allow_none=True
+                )
+            else:
+                models = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/object", allow_none=True)
+
+            # Record success in health tracker
+            try:
+                from scripts.error_recovery import ServiceHealthTracker
+                tracker = ServiceHealthTracker(str(VAULT_PATH))
+                tracker.record_success("odoo")
+            except ImportError:
+                pass
+
+            return models, uid, config["password"], config["db"]
+
+        except ConnectionRefusedError as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt
+                logger.warning(f"Odoo connection refused, retrying in {wait}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+        except ConnectionError:
+            raise
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt
+                logger.warning(f"Odoo error: {e}, retrying in {wait}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+
+    # Record failure in health tracker
     try:
-        # Authenticate
-        common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", allow_none=True)
-        uid = common.authenticate(
-            config["db"], config["username"], config["password"], {}
-        )
+        from scripts.error_recovery import ServiceHealthTracker
+        tracker = ServiceHealthTracker(str(VAULT_PATH))
+        tracker.record_failure("odoo", str(last_error))
+    except ImportError:
+        pass
 
-        if not uid:
-            raise ConnectionError("Odoo authentication failed — check credentials.")
-
-        # Get models proxy
-        models = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/object", allow_none=True)
-
-        return models, uid, config["password"], config["db"]
-
-    except ConnectionRefusedError:
+    if isinstance(last_error, ConnectionRefusedError):
         raise ConnectionError(f"Cannot connect to Odoo at {url} — is the server running?")
-    except Exception as e:
-        raise ConnectionError(f"Odoo connection error: {e}")
+    raise ConnectionError(f"Odoo connection error after {max_retries} attempts: {last_error}")
 
 
 def _create_approval_file(
@@ -376,7 +437,7 @@ def odoo_get_account_balance() -> str:
         accounts = models.execute_kw(
             db, uid, password,
             "account.account", "search_read",
-            [[["deprecated", "=", False]]],
+            [[]],
             {
                 "fields": ["code", "name", "account_type", "current_balance"],
                 "order": "code",
@@ -443,36 +504,62 @@ def odoo_get_profit_loss(date_from: str = "", date_to: str = "") -> str:
     try:
         models, uid, password, db = _get_odoo_connection()
 
-        # Get income accounts
-        income_lines = models.execute_kw(
+        # Get all posted journal items in the date range
+        move_lines = models.execute_kw(
             db, uid, password,
-            "account.move.line", "read_group",
+            "account.move.line", "search_read",
             [[
                 ["date", ">=", date_from],
                 ["date", "<=", date_to],
-                ["account_id.account_type", "in", ["income", "income_other"]],
                 ["parent_state", "=", "posted"],
             ]],
-            ["account_id", "balance"],
-            ["account_id"],
+            {
+                "fields": ["account_id", "balance"],
+                "limit": 5000,
+            },
         )
 
-        # Get expense accounts
-        expense_lines = models.execute_kw(
-            db, uid, password,
-            "account.move.line", "read_group",
-            [[
-                ["date", ">=", date_from],
-                ["date", "<=", date_to],
-                ["account_id.account_type", "in", ["expense", "expense_direct_cost"]],
-                ["parent_state", "=", "posted"],
-            ]],
-            ["account_id", "balance"],
-            ["account_id"],
-        )
+        # Group by account and classify
+        from collections import defaultdict
+        account_totals = defaultdict(lambda: {"name": "", "balance": 0.0})
 
-        total_income = sum(abs(line.get("balance", 0)) for line in income_lines)
-        total_expenses = sum(abs(line.get("balance", 0)) for line in expense_lines)
+        for ml in move_lines:
+            acc = ml.get("account_id", [0, "Unknown"])
+            acc_id = acc[0] if isinstance(acc, list) else acc
+            acc_name = acc[1] if isinstance(acc, list) else str(acc)
+            account_totals[acc_id]["name"] = acc_name
+            account_totals[acc_id]["balance"] += ml.get("balance", 0.0)
+
+        # Get account types
+        acc_ids = list(account_totals.keys())
+        acc_info = {}
+        if acc_ids:
+            accounts = models.execute_kw(
+                db, uid, password,
+                "account.account", "search_read",
+                [[["id", "in", acc_ids]]],
+                {"fields": ["id", "account_type"]},
+            )
+            for a in accounts:
+                acc_info[a["id"]] = a.get("account_type", "")
+
+        total_income = 0.0
+        total_expenses = 0.0
+        income_details = []
+        expense_details = []
+
+        for acc_id, data in account_totals.items():
+            acc_type = acc_info.get(acc_id, "")
+            balance = data["balance"]
+            name = data["name"]
+
+            if "income" in acc_type:
+                total_income += abs(balance)
+                income_details.append((name, abs(balance)))
+            elif "expense" in acc_type:
+                total_expenses += abs(balance)
+                expense_details.append((name, abs(balance)))
+
         net_profit = total_income - total_expenses
 
         lines = [
@@ -480,18 +567,18 @@ def odoo_get_profit_loss(date_from: str = "", date_to: str = "") -> str:
             f"**Revenue:**",
         ]
 
-        for line in income_lines:
-            acc = line.get("account_id", [0, "Unknown"])
-            acc_name = acc[1] if isinstance(acc, list) else str(acc)
-            lines.append(f"- {acc_name}: ${abs(line.get('balance', 0)):,.2f}")
+        for name, amount in income_details:
+            lines.append(f"- {name}: ${amount:,.2f}")
+        if not income_details:
+            lines.append("- (no revenue entries)")
 
         lines.append(f"**Total Revenue: ${total_income:,.2f}**\n")
         lines.append(f"**Expenses:**")
 
-        for line in expense_lines:
-            acc = line.get("account_id", [0, "Unknown"])
-            acc_name = acc[1] if isinstance(acc, list) else str(acc)
-            lines.append(f"- {acc_name}: ${abs(line.get('balance', 0)):,.2f}")
+        for name, amount in expense_details:
+            lines.append(f"- {name}: ${amount:,.2f}")
+        if not expense_details:
+            lines.append("- (no expense entries)")
 
         lines.append(f"**Total Expenses: ${total_expenses:,.2f}**\n")
         lines.append(f"---")

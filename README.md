@@ -11,7 +11,7 @@ A Digital FTE (Full-Time Equivalent) built with Claude Code and Obsidian that pr
 | **Bronze** | COMPLETED | Vault structure, file watcher, 4 agent skills |
 | **Silver** | COMPLETED | Gmail watcher, LinkedIn posting, Email MCP, HITL, scheduling, reasoning loop |
 | **Gold** | COMPLETED | Odoo, social media (FB/IG/Twitter), CEO briefing, Ralph Wiggum loop, audit logging, error recovery |
-| **Platinum** | Not Started | Cloud 24/7, work-zone specialization, synced vault |
+| **Platinum** | COMPLETED | Cloud 24/7, work-zone specialization, synced vault, security boundaries |
 
 ---
 
@@ -32,10 +32,11 @@ OBSIDIAN VAULT (Local Markdown — Obsidian)
   Dashboard.md | Company_Handbook.md | Business_Goals.md
         |
         v
-REASONING LAYER (Claude Code + 16 Agent Skills)
+REASONING LAYER (Claude Code + 20 Agent Skills)
   reasoning-loop: Read -> Think -> Plan -> Act -> Log
   ralph-wiggum-loop: Autonomous multi-step completion
   vault-triage | inbox-processor | dashboard-updater | business-audit
+  cloud-deployment | vault-sync | work-zone-manager | platinum-demo
         |
         v
 ACTION LAYER (3 MCP Servers + Playwright)
@@ -49,9 +50,11 @@ HUMAN-IN-THE-LOOP (hitl-approval skill)
   /Pending_Approval -> Human Review -> /Approved or /Rejected
         |
         v
-INFRASTRUCTURE (Gold)
+INFRASTRUCTURE (Gold + Platinum)
   audit_logger (JSON) | error_recovery (retry + degradation)
   watchdog_monitor (process health) | scheduler (cron-like)
+  vault_sync (Git) | claim_manager | security_check
+  cloud_agent | local_agent | deploy_config
 ```
 
 ## Project Structure
@@ -87,12 +90,21 @@ hackathon-0-final/
 │   ├── twitter_poster.py       # Twitter/X poster (Gold)
 │   ├── social_media_summarizer.py  # Social media metrics (Gold)
 │   ├── ceo_briefing.py         # Weekly CEO briefing generator (Gold)
-│   └── ralph_loop.py           # Ralph Wiggum autonomous loop (Gold)
+│   ├── ralph_loop.py           # Ralph Wiggum autonomous loop (Gold)
+│   ├── deploy_config.py        # Deployment mode configuration (Platinum)
+│   ├── vault_sync.py           # Git-based vault synchronization (Platinum)
+│   ├── claim_manager.py        # Claim-by-move task ownership (Platinum)
+│   ├── cloud_agent.py          # Cloud-zone reasoning/scheduling (Platinum)
+│   ├── local_agent.py          # Local-zone reasoning/execution (Platinum)
+│   ├── security_check.py       # Pre-sync secrets scanner (Platinum)
+│   ├── odoo_backup.py          # Odoo automated backup (Platinum)
+│   ├── platinum_demo.py        # End-to-end Platinum demo (Platinum)
+│   └── cloud_setup.sh          # Cloud VM setup script (Platinum)
 ├── mcp_servers/
 │   ├── email_server.py         # Email MCP server (Silver)
 │   ├── odoo_server.py          # Odoo accounting MCP server (Gold)
 │   └── social_media_server.py  # Social media MCP server (Gold)
-├── .agents/skills/             # 16 Agent Skills
+├── .agents/skills/             # 20 Agent Skills
 │   ├── vault-triage/           # Triage /Needs_Action items (Bronze)
 │   ├── dashboard-updater/      # Refresh Dashboard.md (Bronze)
 │   ├── inbox-processor/        # Full processing cycle (Bronze)
@@ -108,12 +120,22 @@ hackathon-0-final/
 │   ├── social-media-manager/   # Cross-platform strategy (Gold)
 │   ├── ceo-briefing/           # CEO briefing generation (Gold)
 │   ├── business-audit/         # Cross-domain audit (Gold)
-│   └── ralph-wiggum-loop/      # Autonomous completion (Gold)
+│   ├── ralph-wiggum-loop/      # Autonomous completion (Gold)
+│   ├── cloud-deployment/       # Cloud setup + monitoring (Platinum)
+│   ├── vault-sync/             # Git sync + claim-by-move (Platinum)
+│   ├── work-zone-manager/      # Cloud/local routing (Platinum)
+│   └── platinum-demo/          # End-to-end demo (Platinum)
+├── deploy/
+│   ├── Dockerfile.cloud        # Cloud container image (Platinum)
+│   ├── docker-compose.yml      # Full stack: Odoo + cloud agent (Platinum)
+│   ├── Caddyfile               # HTTPS reverse proxy (Platinum)
+│   ├── ai-employee-cloud.service  # Systemd cloud service (Platinum)
+│   └── ai-employee-local.service  # Systemd local service (Platinum)
 ├── .claude/settings.json       # MCP server configuration (3 servers)
 ├── .env.example                # Environment template
 ├── .gitignore
 ├── pyproject.toml
-├── ARCHITECTURE.md             # Detailed architecture docs (Gold)
+├── ARCHITECTURE.md             # Detailed architecture docs (Gold+Platinum)
 ├── LESSONS_LEARNED.md          # Architecture decisions + lessons (Gold)
 └── README.md
 ```
@@ -551,13 +573,184 @@ Expected: Failure logged, service marked as "degraded" in `service_health.json`,
 
 ---
 
-## Platinum Tier Roadmap
+## Platinum Tier — Cloud 24/7 + Work Zones
 
-- [ ] Cloud VM deployment (24/7)
-- [ ] Cloud/Local work-zone specialization
-- [ ] Synced vault via Git
-- [ ] Odoo on cloud with HTTPS
-- [ ] A2A upgrade (optional)
+### What It Does
+- **Cloud/Local Work Zones**: Cloud agent handles email triage, drafts, briefings (never sends). Local agent executes approved actions.
+- **Git-Based Vault Sync**: Vault syncs every 60s between cloud and local via separate Git repo
+- **Claim-by-Move**: Prevents double-work between agents via `/In_Progress/<agent_id>/` directories
+- **Security Boundaries**: Pre-sync secrets scanner blocks API keys, passwords, tokens from being pushed
+- **Cloud Deployment**: Docker + systemd support for Oracle Cloud Free Tier / any Linux VM
+- **Cloud Odoo**: Docker Compose with PostgreSQL, auto-HTTPS via Caddy reverse proxy
+- **Odoo Backup**: Automated daily backups with 30-day retention
+- **Platinum Demo**: End-to-end test proving the minimum gate
+
+### Platinum Checklist
+- [x] Deployment configuration (cloud/local/hybrid modes)
+- [x] Git-based vault sync with conflict resolution
+- [x] Claim-by-move task ownership (prevents double-work)
+- [x] Vault security scanner (blocks secrets from sync)
+- [x] Cloud agent (draft-only, never sends)
+- [x] Local agent (executes approved actions)
+- [x] Scheduler with `--mode cloud|local|hybrid` flag
+- [x] Docker deployment (Dockerfile.cloud + docker-compose.yml)
+- [x] Systemd services (cloud + local)
+- [x] Cloud setup script (Ubuntu/Oracle Cloud)
+- [x] Caddy HTTPS reverse proxy for Odoo
+- [x] Odoo HTTPS support + connection retry
+- [x] Odoo automated backup with retention
+- [x] Platinum end-to-end demo script
+- [x] 4 new Agent Skills (20 total)
+- [x] Dashboard with deployment/sync status
+
+### Running Platinum Components
+
+```bash
+# Deploy config check
+python scripts/deploy_config.py
+
+# Vault sync
+python scripts/vault_sync.py --vault ./AI_Employee_Vault --init   # Initialize
+python scripts/vault_sync.py --vault ./AI_Employee_Vault --once   # Single sync
+
+# Security scan
+python scripts/security_check.py --vault ./AI_Employee_Vault
+
+# Cloud agent (draft-only)
+python scripts/cloud_agent.py --vault ./AI_Employee_Vault --once
+
+# Local agent (execute approved)
+python scripts/local_agent.py --vault ./AI_Employee_Vault --once
+
+# Scheduler with mode
+python scripts/scheduler.py --mode cloud    # Cloud zone only
+python scripts/scheduler.py --mode local    # Local zone only
+python scripts/scheduler.py --mode hybrid   # All jobs (default)
+
+# Platinum demo (dry run)
+python scripts/platinum_demo.py --vault ./AI_Employee_Vault
+
+# Docker deployment
+cd deploy && docker compose up -d
+
+# Odoo backup
+python scripts/odoo_backup.py --vault ./AI_Employee_Vault
+```
+
+### Scheduler — All Jobs (Platinum)
+
+| Job | Frequency | Zone | Tier |
+|-----|-----------|------|------|
+| Vault sync | Every 1 minute | All | Platinum |
+| Cloud agent cycle | Every 2 minutes | Cloud | Platinum |
+| Local agent cycle | Every 5 minutes | Local | Platinum |
+| Gmail check | Every 2 minutes | Cloud | Silver |
+| Dashboard update | Every 15 minutes | Local | Silver |
+| Approval check | Every 5 minutes | Local | Silver |
+| Daily briefing | 8:00 AM daily | Cloud | Silver |
+| Social media post check | Every 30 minutes | Local | Gold |
+| Odoo health check | Every 15 minutes | Local | Gold |
+| Social media summary | Sunday 8:00 PM | Cloud | Gold |
+| CEO briefing | Sunday 9:00 PM | Cloud | Gold |
+| Audit log retention sweep | Midnight daily | All | Gold |
+
+### Platinum Skills (4 new, 20 total)
+| Skill | Purpose | How to Trigger |
+|-------|---------|----------------|
+| `cloud-deployment` | Cloud VM setup, Docker deployment, monitoring | "deploy to cloud", "cloud setup" |
+| `vault-sync` | Git sync, conflict resolution, claim-by-move | "sync vault", "claim task" |
+| `work-zone-manager` | Cloud vs local routing, zone ownership | "check deployment mode" |
+| `platinum-demo` | End-to-end demo of cloud→local flow | "run platinum demo" |
+
+### How to Test Platinum
+
+**Test 1: Deploy Config**
+```bash
+python scripts/deploy_config.py
+```
+Expected: JSON output showing mode, agent_id, active services.
+
+**Test 2: Vault Sync Init**
+```bash
+python scripts/vault_sync.py --vault ./AI_Employee_Vault --init
+```
+Expected: Vault initialized as Git repo with .gitignore.
+
+**Test 3: Claim Manager**
+```bash
+python scripts/claim_manager.py ./AI_Employee_Vault
+```
+Expected: Lists available and claimed tasks.
+
+**Test 4: Security Check**
+```bash
+python scripts/security_check.py --vault ./AI_Employee_Vault
+```
+Expected: "Security check passed" or lists detected issues.
+
+**Test 5: Cloud Agent (Dry Run)**
+```bash
+python scripts/cloud_agent.py --vault ./AI_Employee_Vault --once
+```
+Expected: Triages emails in /Needs_Action/, creates drafts in /Pending_Approval/email/.
+
+**Test 6: Local Agent**
+```bash
+python scripts/local_agent.py --vault ./AI_Employee_Vault --once
+```
+Expected: Merges cloud signals, processes approved items, checks pending approvals.
+
+**Test 7: Scheduler Modes**
+```bash
+python scripts/scheduler.py --mode cloud   # Only cloud jobs scheduled
+python scripts/scheduler.py --mode local   # Only local jobs scheduled
+python scripts/scheduler.py --mode hybrid  # All jobs (backward compat)
+```
+
+**Test 8: Platinum Demo (Dry Run)**
+```bash
+python scripts/platinum_demo.py --vault ./AI_Employee_Vault
+```
+Expected: 7/7 steps pass — Email → Cloud Draft → Sync → Approve → Execute → Done → Logged.
+
+**Test 9: Docker Build**
+```bash
+docker build -f deploy/Dockerfile.cloud .
+```
+Expected: Image builds successfully.
+
+### Platinum Workflow End-to-End
+
+```
+1. Cloud VM running scheduler --mode cloud (24/7)
+   → Gmail checked every 2 min, briefings generated
+
+2. Email arrives: "Send invoice for Q1 services"
+   → gmail_watcher creates EMAIL_*.md in /Needs_Action/
+
+3. Cloud agent triages email
+   → Claims task in /In_Progress/cloud/
+   → Creates draft reply in /Pending_Approval/email/
+   → Original archived to /Done/
+
+4. Vault syncs (every 60s)
+   → Git push from cloud → Git pull on local
+   → Draft appears on local machine
+
+5. Human reviews in Obsidian
+   → Edits draft reply
+   → Moves to /Approved/
+
+6. Local agent detects approval
+   → Claims task in /In_Progress/local/
+   → Sends email via Email MCP
+   → Moves to /Done/
+
+7. Vault syncs back
+   → Cloud sees completion in /Done/
+   → Dashboard updated with results
+   → Audit log captures full chain
+```
 
 ---
 

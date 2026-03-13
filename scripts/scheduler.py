@@ -5,10 +5,15 @@ Runs scheduled tasks: Gmail checks, dashboard updates, daily briefings,
 social media checks, CEO briefings, Odoo health, and audit retention.
 Uses the `schedule` library for simple cron-like scheduling.
 
+Platinum tier adds --mode flag for cloud/local/hybrid deployment zones.
+
 Usage:
     uv run python scripts/scheduler.py
     uv run python scripts/scheduler.py --vault ./AI_Employee_Vault
-    uv run python scripts/scheduler.py --create-bat   # Create Windows Task Scheduler .bat file
+    uv run python scripts/scheduler.py --mode cloud    # Cloud zone only
+    uv run python scripts/scheduler.py --mode local    # Local zone only
+    uv run python scripts/scheduler.py --mode hybrid   # All jobs (default)
+    uv run python scripts/scheduler.py --create-bat    # Create Windows Task Scheduler .bat file
 """
 
 import argparse
@@ -236,6 +241,46 @@ Good morning! Here's your AI Employee status report.
         except ImportError:
             logger.warning("audit_logger not available — skipping retention sweep")
 
+    def vault_sync(self):
+        """Scheduled task: Sync vault via Git."""
+        logger.info("=== Vault Sync ===")
+        try:
+            from scripts.vault_sync import VaultSync
+            syncer = VaultSync(str(self.vault_path))
+            if syncer.is_git_repo():
+                ok = syncer.sync()
+                syncer.write_sync_status()
+                self.log_action("vault_sync", f"Result: {'success' if ok else 'failed'}")
+            else:
+                logger.info("Vault is not a Git repo — skipping sync")
+        except Exception as e:
+            logger.warning(f"Vault sync failed: {e}")
+            self.log_action("vault_sync", f"Error: {str(e)[:100]}")
+
+    def cloud_agent_cycle(self):
+        """Scheduled task: Run cloud agent triage cycle."""
+        logger.info("=== Cloud Agent Cycle ===")
+        try:
+            from scripts.cloud_agent import CloudAgent
+            agent = CloudAgent(str(self.vault_path))
+            agent.run_once()
+            self.log_action("cloud_agent_cycle", "Completed")
+        except Exception as e:
+            logger.warning(f"Cloud agent cycle failed: {e}")
+            self.log_action("cloud_agent_cycle", f"Error: {str(e)[:100]}")
+
+    def local_agent_cycle(self):
+        """Scheduled task: Run local agent execution cycle."""
+        logger.info("=== Local Agent Cycle ===")
+        try:
+            from scripts.local_agent import LocalAgent
+            agent = LocalAgent(str(self.vault_path))
+            agent.run_once()
+            self.log_action("local_agent_cycle", "Completed")
+        except Exception as e:
+            logger.warning(f"Local agent cycle failed: {e}")
+            self.log_action("local_agent_cycle", f"Error: {str(e)[:100]}")
+
     def update_dashboard(self):
         """Scheduled task: Update the dashboard with current stats."""
         logger.info("=== Scheduled Dashboard Update ===")
@@ -282,6 +327,26 @@ Good morning! Here's your AI Employee status report.
             info = service_statuses.get(name, {})
             return info.get("status", "Unknown").title()
 
+        # Get deployment info
+        import os
+        deploy_mode = os.environ.get("DEPLOYMENT_MODE", "hybrid")
+
+        # Get sync status
+        sync_status = "Not configured"
+        sync_file = self.vault_path / "Updates" / f"sync_status_{os.environ.get('LOCAL_AGENT_ID', 'local')}.md"
+        if not sync_file.exists():
+            sync_file = self.vault_path / "Updates" / f"sync_status_{os.environ.get('CLOUD_AGENT_ID', 'cloud')}.md"
+        if sync_file.exists():
+            sync_status = "Active"
+
+        # Cloud agent status from signals
+        cloud_status = "Offline"
+        updates_dir = self.vault_path / "Updates"
+        if updates_dir.exists():
+            signals = sorted(updates_dir.glob("dashboard_signal_*.md"))
+            if signals:
+                cloud_status = "Online"
+
         # Update dashboard
         dashboard_path = self.vault_path / "Dashboard.md"
         dashboard = f"""---
@@ -290,6 +355,14 @@ auto_refresh: true
 ---
 
 # AI Employee Dashboard
+
+## Deployment Status
+| Setting | Value |
+|---------|-------|
+| Deployment Mode | {deploy_mode} |
+| Vault Sync | {sync_status} |
+| Cloud Agent | {cloud_status} |
+| Last Dashboard Refresh | {now.strftime('%Y-%m-%d %H:%M:%S')} |
 
 ## System Status
 | Component | Status | Last Check |
@@ -386,6 +459,12 @@ def main():
         help="Path to the Obsidian vault (default: ./AI_Employee_Vault)",
     )
     parser.add_argument(
+        "--mode",
+        choices=["cloud", "local", "hybrid"],
+        default=None,
+        help="Deployment mode: cloud, local, or hybrid (default: from DEPLOYMENT_MODE env)",
+    )
+    parser.add_argument(
         "--create-bat",
         action="store_true",
         help="Create a .bat file for Windows Task Scheduler",
@@ -398,6 +477,14 @@ def main():
         create_bat_file(project_root)
         return
 
+    # Set deployment mode from CLI flag if provided
+    import os
+    if args.mode:
+        os.environ["DEPLOYMENT_MODE"] = args.mode
+
+    from scripts.deploy_config import get_mode, should_run, DeploymentMode
+    mode = get_mode()
+
     vault_path = Path(args.vault).resolve()
     if not vault_path.exists():
         logger.error(f"Vault not found: {vault_path}")
@@ -405,35 +492,54 @@ def main():
 
     sched = AIEmployeeScheduler(str(vault_path), str(project_root))
 
-    # Schedule tasks — Silver tier
-    schedule.every(2).minutes.do(sched.check_gmail)
-    schedule.every(15).minutes.do(sched.update_dashboard)
-    schedule.every(5).minutes.do(sched.check_approvals)
-    schedule.every().day.at("08:00").do(sched.daily_briefing)
+    # === Platinum: Vault sync (runs in all modes) ===
+    schedule.every(1).minutes.do(sched.vault_sync)
 
-    # Schedule tasks — Gold tier
-    schedule.every(30).minutes.do(sched.check_social_media)
-    schedule.every(15).minutes.do(sched.odoo_health_check)
-    schedule.every().sunday.at("20:00").do(sched.social_summary)
-    schedule.every().sunday.at("21:00").do(sched.ceo_briefing)
+    if mode in (DeploymentMode.LOCAL, DeploymentMode.HYBRID):
+        # Local-zone jobs
+        schedule.every(5).minutes.do(sched.check_approvals)
+        schedule.every(15).minutes.do(sched.update_dashboard)
+        schedule.every(30).minutes.do(sched.check_social_media)
+        schedule.every(15).minutes.do(sched.odoo_health_check)
+        schedule.every(5).minutes.do(sched.local_agent_cycle)
+
+    if mode in (DeploymentMode.CLOUD, DeploymentMode.HYBRID):
+        # Cloud-zone jobs
+        schedule.every(2).minutes.do(sched.check_gmail)
+        schedule.every(2).minutes.do(sched.cloud_agent_cycle)
+        schedule.every().day.at("08:00").do(sched.daily_briefing)
+        schedule.every().sunday.at("20:00").do(sched.social_summary)
+        schedule.every().sunday.at("21:00").do(sched.ceo_briefing)
+
+    # Jobs that run in all modes
     schedule.every().day.at("00:00").do(sched.audit_retention_sweep)
 
-    logger.info("AI Employee Scheduler started.")
+    logger.info(f"AI Employee Scheduler started (mode: {mode.value}).")
     logger.info("Schedule:")
-    logger.info("  - Gmail check: every 2 minutes")
-    logger.info("  - Dashboard update: every 15 minutes")
-    logger.info("  - Approval check: every 5 minutes")
-    logger.info("  - Social media post check: every 30 minutes")
-    logger.info("  - Odoo health check: every 15 minutes")
-    logger.info("  - Daily briefing: 8:00 AM")
-    logger.info("  - Social media summary: Sunday 8:00 PM")
-    logger.info("  - CEO briefing: Sunday 9:00 PM")
+    logger.info(f"  - Deployment mode: {mode.value}")
+    logger.info("  - Vault sync: every 1 minute")
+
+    if mode in (DeploymentMode.LOCAL, DeploymentMode.HYBRID):
+        logger.info("  - Approval check: every 5 minutes")
+        logger.info("  - Dashboard update: every 15 minutes")
+        logger.info("  - Social media post check: every 30 minutes")
+        logger.info("  - Odoo health check: every 15 minutes")
+        logger.info("  - Local agent cycle: every 5 minutes")
+
+    if mode in (DeploymentMode.CLOUD, DeploymentMode.HYBRID):
+        logger.info("  - Gmail check: every 2 minutes")
+        logger.info("  - Cloud agent cycle: every 2 minutes")
+        logger.info("  - Daily briefing: 8:00 AM")
+        logger.info("  - Social media summary: Sunday 8:00 PM")
+        logger.info("  - CEO briefing: Sunday 9:00 PM")
+
     logger.info("  - Audit retention sweep: midnight")
     logger.info("Press Ctrl+C to stop.")
 
     # Run initial tasks
     sched.update_dashboard()
-    sched.check_approvals()
+    if mode in (DeploymentMode.LOCAL, DeploymentMode.HYBRID):
+        sched.check_approvals()
 
     try:
         while True:

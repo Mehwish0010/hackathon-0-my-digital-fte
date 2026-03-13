@@ -51,3 +51,10 @@ AI_Employee_Vault/process_health.json
 
 # Scheduler bat file
 run_scheduler.bat
+
+# Deploy secrets
+deploy/*.env
+deploy/.env.*
+
+# Backups
+backups/

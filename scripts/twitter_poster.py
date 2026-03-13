@@ -112,7 +112,7 @@ def login_to_twitter(session_dir: str):
     logger.info(f"Twitter session saved to {session_dir}/")
 
 
-def post_to_twitter(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False) -> bool:
+def post_to_twitter(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False, interactive_login: bool = False) -> bool:
     """Post a tweet to Twitter/X using Playwright."""
     if dry_run:
         char_count = len(post_content)
@@ -132,8 +132,8 @@ def post_to_twitter(post_content: str, session_dir: str, proof_path: str, dry_ru
         page = browser.pages[0] if browser.pages else browser.new_page()
 
         try:
-            page.goto("https://x.com/home", wait_until="networkidle", timeout=30000)
-            time.sleep(3)
+            page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=30000)
+            time.sleep(5)
 
             # Click the tweet composer
             composer = page.locator(
@@ -142,16 +142,38 @@ def post_to_twitter(post_content: str, session_dir: str, proof_path: str, dry_ru
             )
 
             if composer.count() == 0:
-                logger.error("Not logged in or Twitter UI changed. Run with --login first.")
-                page.screenshot(path=proof_path)
-                browser.close()
-                return False
+                if interactive_login:
+                    logger.info("Please log in to Twitter/X in the browser window.")
+                    start = time.time()
+                    while time.time() - start < 300:
+                        url = page.url
+                        if "x.com/home" in url or ("x.com" in url and "/login" not in url and "/i/flow" not in url):
+                            composer = page.locator(
+                                "div[data-testid='tweetTextarea_0'], "
+                                "div[role='textbox'][data-testid='tweetTextarea_0']"
+                            )
+                            if composer.count() > 0:
+                                logger.info("Login detected!")
+                                time.sleep(2)
+                                break
+                        time.sleep(3)
+                    else:
+                        logger.error("Login timeout.")
+                        page.screenshot(path=proof_path)
+                        browser.close()
+                        return False
+                else:
+                    logger.error("Not logged in or Twitter UI changed. Run with --login-and-post first.")
+                    page.screenshot(path=proof_path)
+                    browser.close()
+                    return False
 
             # Click and type into the composer
             composer.first.click()
             time.sleep(1)
-            composer.first.fill(post_content)
-            time.sleep(1)
+            page.keyboard.type(post_content, delay=15)
+            logger.info(f"Typed tweet ({len(post_content)} chars)")
+            time.sleep(2)
 
             # Click the Post/Tweet button
             post_btn = page.locator(
@@ -166,11 +188,8 @@ def post_to_twitter(post_content: str, session_dir: str, proof_path: str, dry_ru
                 return False
 
             post_btn.first.click()
-            time.sleep(3)
-
-            # Wait for submission
-            page.wait_for_load_state("networkidle", timeout=15000)
-            time.sleep(2)
+            logger.info("Clicked Post button")
+            time.sleep(5)
 
             # Take proof screenshot
             page.screenshot(path=proof_path)
@@ -209,7 +228,7 @@ def log_action(logs_dir: Path, action_type: str, details: str):
     log_file.write_text(content, encoding="utf-8")
 
 
-def process_approved_tweets(vault_path: Path, session_dir: str, dry_run: bool = False):
+def process_approved_tweets(vault_path: Path, session_dir: str, dry_run: bool = False, interactive_login: bool = False):
     """Find and post all approved Twitter drafts."""
     approved_dir = vault_path / "Approved"
     done_dir = vault_path / "Done"
@@ -241,7 +260,7 @@ def process_approved_tweets(vault_path: Path, session_dir: str, dry_run: bool = 
         proof_name = file_path.stem + "_proof.png"
         proof_path = str(done_dir / proof_name)
 
-        success = post_to_twitter(post_data["content"], session_dir, proof_path, dry_run=dry_run)
+        success = post_to_twitter(post_data["content"], session_dir, proof_path, dry_run=dry_run, interactive_login=interactive_login)
 
         if success:
             content = file_path.read_text(encoding="utf-8")
@@ -284,6 +303,11 @@ def main():
         action="store_true",
         help="Log actions without posting",
     )
+    parser.add_argument(
+        "--login-and-post",
+        action="store_true",
+        help="Login interactively then post in one session",
+    )
     args = parser.parse_args()
 
     if args.login:
@@ -298,7 +322,7 @@ def main():
     if args.dry_run:
         logger.info("[DRY RUN MODE] No tweets will be posted.")
 
-    process_approved_tweets(vault_path, args.session_dir, dry_run=args.dry_run)
+    process_approved_tweets(vault_path, args.session_dir, dry_run=args.dry_run, interactive_login=args.login_and_post)
 
 
 if __name__ == "__main__":

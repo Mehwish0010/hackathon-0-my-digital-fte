@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+LABEL maintainer="AI Employee" \
+      description="Cloud agent for AI Employee — drafts only, never sends"
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python deps
+COPY pyproject.toml uv.lock* ./
+RUN pip install --no-cache-dir uv && \
+    uv pip install --system --no-cache -r pyproject.toml || \
+    pip install --no-cache-dir schedule watchdog python-dotenv mcp google-auth-oauthlib google-api-python-client
+
+# Copy application code
+COPY scripts/ ./scripts/
+COPY mcp_servers/ ./mcp_servers/
+COPY .agents/ ./.agents/
+
+# Create vault directory (will be mounted as volume)
+RUN mkdir -p /vault
+
+# Environment defaults
+ENV DEPLOYMENT_MODE=cloud \
+    VAULT_PATH=/vault \
+    PYTHONUNBUFFERED=1
+
+# Health check
+HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
+    CMD python -c "from scripts.deploy_config import get_config_summary; print(get_config_summary())"
+
+ENTRYPOINT ["python", "scripts/scheduler.py", "--mode", "cloud", "--vault", "/vault"]

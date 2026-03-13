@@ -1,0 +1,31 @@
+# Secrets and credentials
+*.key
+*.pem
+.env
+token.json
+credentials.json
+client_secret_*.json
+
+# Session data (browser state)
+linkedin_session/
+facebook_session/
+twitter_session/
+whatsapp_session/
+
+# Runtime state (not synced)
+service_health.json
+process_health.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Obsidian internals
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Logs (kept locally, not synced)
+Logs/*.json
+
+# Keep folder structure
+!.gitkeep

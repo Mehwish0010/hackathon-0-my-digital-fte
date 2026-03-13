@@ -82,10 +82,15 @@ def extract_post_content(file_path: Path, platform: str = "facebook") -> dict | 
     if hashtags:
         full_post += "\n\n" + hashtags
 
+    # Extract image path if present
+    image_match = re.search(r"## Image\s*\n(.*?)(?=\n## |\Z)", content, re.DOTALL)
+    image_path = image_match.group(1).strip() if image_match else None
+
     return {
         "content": full_post,
         "filename": file_path.name,
         "path": file_path,
+        "image_path": image_path,
     }
 
 
@@ -115,8 +120,57 @@ def login_to_facebook(session_dir: str):
     logger.info(f"Facebook session saved to {session_dir}/")
 
 
-def post_to_facebook(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False) -> bool:
-    """Post content to Facebook using Playwright."""
+def _wait_for_fb_login(page, timeout=300):
+    """Wait until user is logged in to Facebook."""
+    logger.info("Waiting for you to log in... (checking for feed page)")
+    start = time.time()
+    while time.time() - start < timeout:
+        url = page.url
+        # Facebook redirects to / or /home.php after login
+        if "facebook.com" in url and "/login" not in url and "checkpoint" not in url:
+            # Dismiss any popups (e.g., "Remember password", notifications)
+            for dismiss_text in ["Not now", "Not Now", "Skip", "Close", "OK"]:
+                try:
+                    dismiss_btn = page.locator(f"[aria-label='{dismiss_text}'], a:has-text('{dismiss_text}'), span:has-text('{dismiss_text}')")
+                    if dismiss_btn.count() > 0:
+                        dismiss_btn.first.click(timeout=2000)
+                        logger.info(f"Dismissed popup: {dismiss_text}")
+                        time.sleep(1)
+                except Exception:
+                    pass
+            # Check if we see the composer (means we're on the feed)
+            composer = page.locator(
+                "[aria-label*=\"What's on your mind\"], "
+                "[role='button']:has-text('on your mind'), "
+                "div[class*='x1i10hfl']:has-text('on your mind')"
+            )
+            if composer.count() > 0:
+                logger.info("Login detected! Proceeding...")
+                time.sleep(2)
+                return True
+        time.sleep(3)
+    logger.error("Login timeout — did not detect logged-in state.")
+    return False
+
+
+def _wait_for_mfb_login(page, timeout=300):
+    """Wait until user is logged in on mobile Facebook."""
+    logger.info("Waiting for you to log in on mobile Facebook...")
+    start = time.time()
+    while time.time() - start < timeout:
+        url = page.url
+        # Check various post-login URLs
+        if "facebook.com" in url and "/login" not in url and "checkpoint" not in url and "recover" not in url:
+            logger.info(f"Login detected! URL: {url}")
+            time.sleep(2)
+            return True
+        time.sleep(3)
+    logger.error("Login timeout.")
+    return False
+
+
+def post_to_facebook(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False, interactive_login: bool = False) -> bool:
+    """Post content to Facebook using mobile site (m.facebook.com) for reliability."""
     if dry_run:
         logger.info(f"[DRY RUN] Would post to Facebook: {post_content[:100]}...")
         return True
@@ -133,48 +187,134 @@ def post_to_facebook(post_content: str, session_dir: str, proof_path: str, dry_r
         page = browser.pages[0] if browser.pages else browser.new_page()
 
         try:
-            page.goto("https://www.facebook.com/", wait_until="networkidle", timeout=30000)
-            time.sleep(3)
+            page.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=30000)
+            time.sleep(5)
 
-            # Click "What's on your mind?" composer
+            # Check if logged in
             composer = page.locator(
                 "[aria-label*=\"What's on your mind\"], "
-                "[role='button']:has-text('on your mind'), "
-                "div[class*='x1i10hfl']:has-text('on your mind')"
+                "[role='button']:has-text('on your mind')"
             )
 
             if composer.count() == 0:
-                logger.error("Not logged in or Facebook UI changed. Run with --login first.")
-                page.screenshot(path=proof_path)
-                browser.close()
-                return False
+                if interactive_login:
+                    page.goto("https://www.facebook.com/login", wait_until="domcontentloaded", timeout=15000)
+                    logger.info("Please log in to Facebook in the browser window.")
+                    if not _wait_for_fb_login(page, timeout=300):
+                        page.screenshot(path=proof_path)
+                        browser.close()
+                        return False
+                    page.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=30000)
+                    time.sleep(5)
+                    composer = page.locator(
+                        "[aria-label*=\"What's on your mind\"], "
+                        "[role='button']:has-text('on your mind')"
+                    )
+                else:
+                    logger.error("Not logged in. Run with --login-and-post.")
+                    page.screenshot(path=proof_path)
+                    browser.close()
+                    return False
 
+            # Step 1: Click composer
             composer.first.click()
+            time.sleep(3)
+
+            # Step 2: Handle "Review audience" -> Continue -> "Update settings" -> Done
+            review = page.locator("text='Review audience'")
+            if review.count() > 0:
+                logger.info("Review audience popup detected")
+                cont = page.locator("div[role='button']:has-text('Continue')")
+                if cont.count() > 0:
+                    cont.first.click(force=True)
+                    logger.info("Clicked Continue")
+                    time.sleep(3)
+
+                # Now "Update settings" appears — click Done to accept current settings
+                update = page.locator("text='Update settings'")
+                if update.count() > 0:
+                    logger.info("Update settings popup detected")
+                    done_btn = page.locator("div[role='button']:has-text('Done')")
+                    if done_btn.count() > 0:
+                        done_btn.first.click(force=True)
+                        logger.info("Clicked Done")
+                        time.sleep(3)
+                    else:
+                        # Try Save button
+                        save_btn = page.locator("div[role='button']:has-text('Save')")
+                        if save_btn.count() > 0:
+                            save_btn.first.click(force=True)
+                            logger.info("Clicked Save")
+                            time.sleep(3)
+
+            # Step 3: Composer might have closed, re-open
+            editor = page.locator("div[contenteditable='true'][role='textbox']")
+            if editor.count() == 0 or not editor.first.is_visible():
+                logger.info("Re-opening composer...")
+                composer2 = page.locator(
+                    "[aria-label*=\"What's on your mind\"], "
+                    "[role='button']:has-text('on your mind')"
+                )
+                if composer2.count() > 0:
+                    composer2.first.click(force=True)
+                    time.sleep(3)
+
+            # Step 4: Type content
+            editor = page.locator("div[contenteditable='true'][role='textbox']")
+            editor.wait_for(state="visible", timeout=15000)
+            editor.click(force=True)
+            time.sleep(1)
+            page.keyboard.type(post_content, delay=15)
+            logger.info(f"Typed post content ({len(post_content)} chars)")
             time.sleep(2)
 
-            # Fill the post editor
-            editor = page.locator(
-                "div[contenteditable='true'][role='textbox'], "
-                "div[contenteditable='true'][aria-label*='on your mind']"
-            )
-            editor.wait_for(state="visible", timeout=10000)
-            editor.click()
-            editor.fill(post_content)
-            time.sleep(1)
+            page.screenshot(path=proof_path.replace(".png", "_before.png"))
 
-            # Click Post button
-            post_btn = page.locator(
-                "div[aria-label='Post'][role='button'], "
-                "span:has-text('Post'):visible"
-            )
-            if post_btn.count() > 0:
-                post_btn.first.click()
-            else:
-                # Fallback
+            # Step 5: Click Post via JavaScript (force click doesn't work on FB)
+            posted = page.evaluate("""() => {
+                // Find all elements with aria-label="Post" and role="button"
+                const btns = document.querySelectorAll('div[aria-label="Post"][role="button"]');
+                for (const btn of btns) {
+                    // Check if it's visible and inside the create post dialog
+                    const rect = btn.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                        btn.click();
+                        return 'clicked_aria';
+                    }
+                }
+                // Fallback: find the blue Post button by text
+                const spans = document.querySelectorAll('span');
+                for (const span of spans) {
+                    if (span.textContent.trim() === 'Post') {
+                        const parent = span.closest('div[role="button"]');
+                        if (parent) {
+                            parent.click();
+                            return 'clicked_span';
+                        }
+                    }
+                }
+                return 'not_found';
+            }""")
+            logger.info(f"Post button click result: {posted}")
+            if posted == 'not_found':
+                logger.info("Trying Ctrl+Enter as fallback")
                 page.keyboard.press("Control+Enter")
 
+            # Step 6: Wait and handle any post-submit dialog
             time.sleep(5)
-            page.wait_for_load_state("networkidle", timeout=15000)
+            update2 = page.locator("text='Update settings'")
+            if update2.count() > 0:
+                done2 = page.locator("div[role='button']:has-text('Done')")
+                if done2.count() > 0:
+                    done2.first.click(force=True)
+                    logger.info("Clicked Done on post-submit dialog")
+                else:
+                    save2 = page.locator("div[role='button']:has-text('Save')")
+                    if save2.count() > 0:
+                        save2.first.click(force=True)
+                        logger.info("Clicked Save on post-submit dialog")
+
+            time.sleep(5)
 
             page.screenshot(path=proof_path)
             logger.info(f"Facebook post submitted. Proof: {proof_path}")
@@ -197,11 +337,15 @@ def post_to_facebook(post_content: str, session_dir: str, proof_path: str, dry_r
             return False
 
 
-def post_to_instagram(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False) -> bool:
-    """Post content to Instagram using mobile viewport emulation."""
+def post_to_instagram(post_content: str, session_dir: str, proof_path: str, dry_run: bool = False, interactive_login: bool = False, image_path: str = None) -> bool:
+    """Post content to Instagram using desktop web with image upload."""
     if dry_run:
         logger.info(f"[DRY RUN] Would post to Instagram: {post_content[:100]}...")
         return True
+
+    if not image_path or not Path(image_path).exists():
+        logger.error(f"Instagram requires an image. Path: {image_path}")
+        return False
 
     Path(session_dir).mkdir(parents=True, exist_ok=True)
 
@@ -209,41 +353,135 @@ def post_to_instagram(post_content: str, session_dir: str, proof_path: str, dry_
         browser = p.chromium.launch_persistent_context(
             user_data_dir=session_dir,
             headless=False,
-            viewport=INSTAGRAM_DEVICE["viewport"],
-            user_agent=INSTAGRAM_DEVICE["user_agent"],
-            is_mobile=INSTAGRAM_DEVICE["is_mobile"],
-            has_touch=INSTAGRAM_DEVICE["has_touch"],
-            device_scale_factor=INSTAGRAM_DEVICE["device_scale_factor"],
+            viewport={"width": 1280, "height": 800},
         )
 
         page = browser.pages[0] if browser.pages else browser.new_page()
 
         try:
-            page.goto("https://www.instagram.com/", wait_until="networkidle", timeout=30000)
-            time.sleep(3)
+            page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=30000)
+            time.sleep(5)
 
-            # Instagram mobile: click the + (create) button
+            # Check if logged in — look for create/new post button
             create_btn = page.locator(
-                "[aria-label='New post'], "
                 "svg[aria-label='New post'], "
-                "a[href='/create/style/']"
+                "[aria-label='New post'], "
+                "a[href='/create/style/'], "
+                "svg[aria-label='New Post']"
             )
 
             if create_btn.count() == 0:
-                logger.error("Not logged in or Instagram UI changed. Run with --login first.")
+                if interactive_login:
+                    logger.info("Please log in to Instagram in the browser window.")
+                    # Wait for login
+                    start = time.time()
+                    while time.time() - start < 300:
+                        url = page.url
+                        if "instagram.com" in url and "/accounts/login" not in url:
+                            create_btn = page.locator(
+                                "svg[aria-label='New post'], "
+                                "[aria-label='New post'], "
+                                "svg[aria-label='New Post']"
+                            )
+                            if create_btn.count() > 0:
+                                logger.info("Login detected!")
+                                time.sleep(2)
+                                break
+                        time.sleep(3)
+                    else:
+                        logger.error("Login timeout.")
+                        page.screenshot(path=proof_path)
+                        browser.close()
+                        return False
+                else:
+                    logger.error("Not logged in. Run with --login-and-post.")
+                    page.screenshot(path=proof_path)
+                    browser.close()
+                    return False
+
+            # Dismiss any "Turn on Notifications" popup
+            try:
+                not_now = page.locator("button:has-text('Not Now'), button:has-text('Not now')")
+                if not_now.count() > 0:
+                    not_now.first.click()
+                    logger.info("Dismissed notifications popup")
+                    time.sleep(1)
+            except Exception:
+                pass
+
+            # Step 1: Click "New post" / "+" button
+            create_btn.first.click()
+            time.sleep(3)
+
+            # Step 2: Upload image via file input
+            # Instagram creates a hidden file input when the create dialog opens
+            file_input = page.locator("input[type='file'][accept*='image']")
+            if file_input.count() == 0:
+                # Sometimes need to wait a bit more
+                time.sleep(2)
+                file_input = page.locator("input[type='file']")
+
+            if file_input.count() > 0:
+                file_input.first.set_input_files(image_path)
+                logger.info(f"Uploaded image: {image_path}")
+                time.sleep(5)
+            else:
+                logger.error("Could not find file input for image upload")
                 page.screenshot(path=proof_path)
                 browser.close()
                 return False
 
-            create_btn.first.click()
-            time.sleep(2)
+            # Step 3: Handle crop/resize screen — click "Next"
+            # May need to dismiss "Crop" dialog first
+            for _ in range(3):
+                next_btn = page.locator(
+                    "div[role='button']:has-text('Next'), "
+                    "button:has-text('Next')"
+                )
+                if next_btn.count() > 0:
+                    next_btn.first.click()
+                    logger.info("Clicked Next")
+                    time.sleep(3)
+                else:
+                    break
 
-            # Instagram requires an image — this is a text-based workflow limitation
-            # For text posts, we use the caption field after selecting an image
-            logger.info("Instagram posting requires image selection — completing caption workflow")
+            # Step 4: Type caption
+            caption_field = page.locator(
+                "textarea[aria-label*='Write a caption'], "
+                "div[aria-label*='Write a caption'], "
+                "textarea[placeholder*='Write a caption']"
+            )
+            if caption_field.count() > 0:
+                caption_field.first.click()
+                time.sleep(1)
+                page.keyboard.type(post_content, delay=15)
+                logger.info(f"Typed caption ({len(post_content)} chars)")
+                time.sleep(2)
+            else:
+                logger.warning("Could not find caption field")
+
+            page.screenshot(path=proof_path.replace(".png", "_before.png"))
+
+            # Step 5: Click "Share"
+            share_btn = page.locator(
+                "div[role='button']:has-text('Share'), "
+                "button:has-text('Share')"
+            )
+            if share_btn.count() > 0:
+                share_btn.first.click()
+                logger.info("Clicked Share")
+                time.sleep(10)
+            else:
+                logger.error("Could not find Share button")
+                page.screenshot(path=proof_path)
+                browser.close()
+                return False
+
+            # Wait for "Post shared" confirmation or redirect
+            time.sleep(5)
 
             page.screenshot(path=proof_path)
-            logger.info(f"Instagram workflow initiated. Proof: {proof_path}")
+            logger.info(f"Instagram post submitted. Proof: {proof_path}")
 
             browser.close()
             return True
@@ -278,7 +516,7 @@ def log_action(logs_dir: Path, action_type: str, details: str):
     log_file.write_text(content, encoding="utf-8")
 
 
-def process_approved_posts(vault_path: Path, session_dir: str, platform: str = "facebook", dry_run: bool = False):
+def process_approved_posts(vault_path: Path, session_dir: str, platform: str = "facebook", dry_run: bool = False, interactive_login: bool = False):
     """Find and post all approved Facebook/Instagram drafts."""
     approved_dir = vault_path / "Approved"
     done_dir = vault_path / "Done"
@@ -312,9 +550,9 @@ def process_approved_posts(vault_path: Path, session_dir: str, platform: str = "
         proof_path = str(done_dir / proof_name)
 
         if platform == "instagram":
-            success = post_to_instagram(post_data["content"], session_dir, proof_path, dry_run=dry_run)
+            success = post_to_instagram(post_data["content"], session_dir, proof_path, dry_run=dry_run, interactive_login=interactive_login, image_path=post_data.get("image_path"))
         else:
-            success = post_to_facebook(post_data["content"], session_dir, proof_path, dry_run=dry_run)
+            success = post_to_facebook(post_data["content"], session_dir, proof_path, dry_run=dry_run, interactive_login=interactive_login)
 
         if success:
             content = file_path.read_text(encoding="utf-8")
@@ -363,6 +601,11 @@ def main():
         action="store_true",
         help="Log actions without posting",
     )
+    parser.add_argument(
+        "--login-and-post",
+        action="store_true",
+        help="Login interactively then post in one session (use when session expired)",
+    )
     args = parser.parse_args()
 
     if args.login:
@@ -378,10 +621,10 @@ def main():
         logger.info("[DRY RUN MODE] No posts will be made.")
 
     if args.platform in ("facebook", "both"):
-        process_approved_posts(vault_path, args.session_dir, "facebook", dry_run=args.dry_run)
+        process_approved_posts(vault_path, args.session_dir, "facebook", dry_run=args.dry_run, interactive_login=args.login_and_post)
 
     if args.platform in ("instagram", "both"):
-        process_approved_posts(vault_path, args.session_dir, "instagram", dry_run=args.dry_run)
+        process_approved_posts(vault_path, args.session_dir, "instagram", dry_run=args.dry_run, interactive_login=args.login_and_post)
 
 
 if __name__ == "__main__":

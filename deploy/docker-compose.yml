@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  # Cloud AI Employee Agent
+  cloud-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.cloud
+    container_name: ai-employee-cloud
+    restart: unless-stopped
+    env_file:
+      - .env.cloud
+    environment:
+      - DEPLOYMENT_MODE=cloud
+      - VAULT_PATH=/vault
+    volumes:
+      - vault-data:/vault
+      - ./credentials:/app/credentials:ro
+    depends_on:
+      odoo-db:
+        condition: service_healthy
+    networks:
+      - ai-employee-net
+
+  # Odoo 17 Community
+  odoo:
+    image: odoo:17.0
+    container_name: ai-employee-odoo
+    restart: unless-stopped
+    depends_on:
+      odoo-db:
+        condition: service_healthy
+    environment:
+      - HOST=odoo-db
+      - USER=odoo
+      - PASSWORD=${ODOO_DB_PASSWORD:-odoo}
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - odoo-addons:/mnt/extra-addons
+    networks:
+      - ai-employee-net
+
+  # PostgreSQL for Odoo
+  odoo-db:
+    image: postgres:16-alpine
+    container_name: ai-employee-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=${ODOO_DB_PASSWORD:-odoo}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-employee-net
+
+  # Caddy reverse proxy (auto-HTTPS)
+  caddy:
+    image: caddy:2-alpine
+    container_name: ai-employee-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - ai-employee-net
+
+volumes:
+  vault-data:
+  odoo-data:
+  odoo-addons:
+  postgres-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  ai-employee-net:
+    driver: bridge
