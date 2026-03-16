@@ -1,51 +1,60 @@
 ---
-last_updated: 2026-03-14
+last_updated: 2026-03-16
 auto_refresh: true
 ---
 
 # AI Employee Dashboard
 
+## Deployment Status
+| Setting | Value |
+|---------|-------|
+| Deployment Mode | hybrid |
+| Vault Sync | Active |
+| Cloud Agent | Online |
+| Last Dashboard Refresh | 2026-03-16 21:24:28 |
+
 ## System Status
 | Component | Status | Last Check |
 |-----------|--------|------------|
-| File Watcher | Ready | 2026-03-14 00:30 |
-| Gmail Watcher | Ready | 2026-03-14 00:30 |
-| Approval Watcher | Ready | 2026-03-14 00:30 |
-| LinkedIn Poster | Ready | 2026-03-14 00:30 |
-| Facebook/IG Poster | Ready | 2026-03-14 00:30 |
-| Twitter/X Poster | Ready | 2026-03-14 00:30 |
-| Email MCP Server | Configured | 2026-03-14 00:30 |
-| Odoo MCP Server | Down | 2026-03-14 00:30 |
-| Social Media MCP | Configured | 2026-03-14 00:30 |
-| Scheduler | Running | 2026-03-14 00:30 |
-| Watchdog Monitor | Ready | 2026-03-14 00:30 |
-| Audit Logger | Active | 2026-03-14 00:30 |
+| File Watcher | Ready | 2026-03-16 21:24 |
+| Gmail Watcher | Ready | 2026-03-16 21:24 |
+| Approval Watcher | Ready | 2026-03-16 21:24 |
+| LinkedIn Poster | Ready | 2026-03-16 21:24 |
+| Facebook/IG Poster | Ready | 2026-03-16 21:24 |
+| Twitter/X Poster | Ready | 2026-03-16 21:24 |
+| Email MCP Server | Configured | 2026-03-16 21:24 |
+| Odoo MCP Server | Healthy | 2026-03-16 21:24 |
+| Social Media MCP | Configured | 2026-03-16 21:24 |
+| Scheduler | Running | 2026-03-16 21:24 |
+| Watchdog Monitor | Ready | 2026-03-16 21:24 |
+| Audit Logger | Active | 2026-03-16 21:24 |
 
 ## Pending Actions
 | # | Source | Summary | Priority | Created |
 |---|--------|---------|----------|---------|
-| 1 | EMAIL | EMAIL_2026-03-03_18-10-00_Update_on_Judg | medium | 1772543401 |
+| - | - | No pending actions | - | - |
 
 ## Recent Activity
-- [00:27:57] **ralph_loop_start**: Task: Process test meeting notes and archive them | Max: 3
-- [00:27:57] **ralph_loop_iteration**: Iteration 1: success — Dry run — no action taken
-- [00:27:59] **ralph_loop_iteration**: Iteration 2: success — Dry run — no action taken
-- [00:27:59] **ralph_loop_max_iterations**: Stopped after 3 iterations — manual intervention needed
-- [00:28:41] **ralph_loop_start**: Task: List all files in /Done/ folder and count them | Max: 2
-- [00:28:41] **ralph_loop_iteration**: Iteration 1: failed — Claude Code CLI not available
-- [00:28:44] **ralph_loop_iteration**: Iteration 2: failed — Claude Code CLI not available
-- [00:28:46] **ralph_loop_max_iterations**: Stopped after 2 iterations — manual intervention needed
-- [00:30:30] **daily_briefing**: Generated: briefing_2026-03-14.md
+- [21:22:34] **local_execute_approved**: Completed: FACEBOOK_test_local_agent.md
+- [21:22:34] **local_social_queued**: linkedin post ready: LINKEDIN_post_20260303_183307.md
+- [21:22:34] **local_execute_approved**: Completed: LINKEDIN_post_20260303_183307.md
+- [21:22:34] **local_social_queued**: twitter post ready: TWITTER_post_20260303_011215.md
+- [21:22:34] **local_execute_approved**: Completed: TWITTER_post_20260303_011215.md
+- [21:22:34] **local_social_queued**: twitter post ready: TWITTER_post_20260312_agentic_ai.md
+- [21:22:34] **local_execute_approved**: Completed: TWITTER_post_20260312_agentic_ai.md
+- [21:24:06] **scheduled_dashboard_update**: Counts: {'Inbox': 5, 'Needs_Action': 0, 'In_Progress': 0, 'Done': 55, 'Pending_Approval': 11, 'Approved': 0}
+- [21:24:17] **scheduled_dashboard_update**: Counts: {'Inbox': 5, 'Needs_Action': 0, 'In_Progress': 0, 'Done': 55, 'Pending_Approval': 11, 'Approved': 0}
+- [21:24:19] **scheduled_approval_check**: Result: success
 
 ## Quick Stats
-- **Inbox items**: 2
-- **Needs Action**: 1
+- **Inbox items**: 5
+- **Needs Action**: 0
 - **In Progress**: 0
 - **Pending Approval**: 11
-- **Done (this week)**: 38
+- **Done (this week)**: 55
 
 ## Upcoming Deadlines
 _No deadlines set._
 
 ---
-*Auto-updated by AI Employee Scheduler. Last refresh: 2026-03-14 00:30:30*
+*Auto-updated by AI Employee Scheduler. Last refresh: 2026-03-16 21:24:28*

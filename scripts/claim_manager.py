@@ -47,7 +47,7 @@ class ClaimManager:
     def _find_file(self, filename: str, search_dirs: list[str] | None = None) -> Path | None:
         """Find a file in vault directories (checks root and subdirectories)."""
         if search_dirs is None:
-            search_dirs = ["Needs_Action", "Pending_Approval"]
+            search_dirs = ["Needs_Action", "Pending_Approval", "Approved"]
 
         for dir_name in search_dirs:
             dir_path = self.vault_path / dir_name
