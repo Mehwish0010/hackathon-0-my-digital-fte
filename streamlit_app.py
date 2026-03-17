@@ -14,7 +14,7 @@ import streamlit as st
 VAULT = Path(__file__).parent / "AI_Employee_Vault"
 FOLDERS = ["Inbox", "Needs_Action", "In_Progress", "Pending_Approval", "Approved", "Done", "Rejected"]
 
-st.set_page_config(page_title="AI Employee", page_icon="🤖", layout="wide")
+st.set_page_config(page_title=" Mehwish Fatima AI Employee", page_icon="🤖", layout="wide")
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +87,7 @@ def file_type_icon(name: str) -> str:
 with st.sidebar:
     st.title("🤖 AI Employee")
     st.caption("Personal Digital FTE")
+    st.markdown("**Built by Mehwish Fatima**")
     st.divider()
     page = st.radio(
         "Navigate",
